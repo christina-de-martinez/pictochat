@@ -113,9 +113,19 @@ const visitorId = (() => {
   return id;
 })();
 
-const clientId =
-  (crypto.randomUUID && crypto.randomUUID()) ||
-  Math.random().toString(36).slice(2) + Date.now().toString(36) + Math.random().toString(36).slice(2);
+// Identifies this tab to the server. Kept for the life of the tab (sessionStorage), so a reload
+// or a phone waking the page back up rejoins silently instead of "entering" again.
+const clientId = (() => {
+  try {
+    const saved = sessionStorage.getItem('pc.client');
+    if (saved && /^[\w-]{8,64}$/.test(saved)) return saved;
+    const id = randomId();
+    sessionStorage.setItem('pc.client', id);
+    return id;
+  } catch {
+    return randomId();
+  }
+})();
 
 function show(screen) {
   state.screen = screen;
@@ -776,7 +786,7 @@ function renderLobby() {
   if (!state.selectedRoom) {
     const hint = el('div', 'hint');
     hint.append(`Hi, `, makeTag(state.profile.name, state.profile.color), `!`);
-    hint.append(el('br'), 'Tap a room to join');
+    hint.append(el('br'), "Tap a room to see who's there");
     hint.querySelector('.tag').style.cssText += 'position:static;display:inline-block;border-radius:3px';
     info.append(hint);
     return;
@@ -824,6 +834,8 @@ function onJoined({ room, history, rejoin }) {
   $('#room-letter').textContent = room;
   // A silent reconnect keeps the log we already have; otherwise rebuild it from history.
   state.acceptHistory = !wasHere || !rejoin;
+  // Show the room before filling the log: a hidden log can't be scrolled to the newest message.
+  show('room');
   if (state.acceptHistory) {
     log.replaceChildren();
     msgs.clear();
@@ -837,7 +849,6 @@ function onJoined({ room, history, rejoin }) {
     sfx.enter();
   }
   renderRoomCount();
-  show('room');
 }
 
 function appendHistory(entries) {
@@ -863,6 +874,12 @@ function renderStats({ online, today }) {
 
 let ws = null;
 let backoff = 500;
+let reconnectTimer = null;
+// Heartbeat: the server answers "ping" with "pong" without waking up. If a pong doesn't come
+// back in time the connection is dead (common on phones) and gets replaced right away.
+const PING_EVERY_MS = 25_000;
+const PONG_TIMEOUT_MS = 8_000;
+let pingSentAt = 0;
 
 function wsSend(obj) {
   if (ws?.readyState === 1) ws.send(JSON.stringify(obj));
@@ -877,10 +894,51 @@ function setConnected(on) {
   $('#signal').classList.toggle('on', on);
 }
 
+function scheduleReconnect(delay) {
+  clearTimeout(reconnectTimer);
+  reconnectTimer = setTimeout(connect, delay);
+}
+
+// Drop the current socket without waiting for a close handshake that may never come.
+function abandonSocket() {
+  const old = ws;
+  ws = null;
+  pingSentAt = 0;
+  setConnected(false);
+  try { old?.close(); } catch {}
+}
+
+setInterval(() => {
+  if (ws?.readyState !== 1) return;
+  if (pingSentAt && Date.now() - pingSentAt > PONG_TIMEOUT_MS) {
+    abandonSocket();
+    return connect();
+  }
+  if (!pingSentAt) {
+    pingSentAt = Date.now();
+    ws.send('ping');
+  }
+}, PING_EVERY_MS / 5);
+
+// Coming back to the tab: reconnect now instead of waiting out the backoff.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (!ws || ws.readyState > 1) {
+    backoff = 500;
+    scheduleReconnect(0);
+  } else if (ws.readyState === 1 && !pingSentAt) {
+    pingSentAt = Date.now();
+    ws.send('ping');
+  }
+});
+
 function connect() {
+  clearTimeout(reconnectTimer);
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${location.host}/ws`);
-  ws.addEventListener('open', () => {
+  const sock = new WebSocket(`${proto}://${location.host}/ws`);
+  ws = sock;
+  sock.addEventListener('open', () => {
+    if (sock !== ws) return sock.close(); // superseded while connecting
     backoff = 500;
     setConnected(true);
     $('#toast').hidden = true;
@@ -888,7 +946,12 @@ function connect() {
     hello();
     if (state.room) wsSend({ t: 'join', room: state.room });
   });
-  ws.addEventListener('message', (ev) => {
+  sock.addEventListener('message', (ev) => {
+    if (sock !== ws) return;
+    if (ev.data === 'pong') {
+      pingSentAt = 0;
+      return;
+    }
     let d;
     try { d = JSON.parse(ev.data); } catch { return; }
     switch (d.t) {
@@ -919,10 +982,13 @@ function connect() {
         break;
     }
   });
-  ws.addEventListener('close', () => {
+  sock.addEventListener('close', () => {
+    if (sock !== ws) return; // already replaced
+    ws = null;
+    pingSentAt = 0;
     setConnected(false);
     if (state.screen === 'room') toast('Reconnecting…', 0);
-    setTimeout(connect, backoff);
+    scheduleReconnect(backoff);
     backoff = Math.min(backoff * 2, 8000);
   });
 }

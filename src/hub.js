@@ -12,6 +12,9 @@ const MIN_SEND_INTERVAL_MS = 1000;
 // A dropped connection keeps its seat briefly so network blips don't spam enter/leave.
 const RECONNECT_GRACE_MS = 10_000;
 const PRUNE_EVERY_MS = 60 * 60 * 1000;
+// After a restart (every deploy), sockets vanish without close events. People get this long to
+// reconnect before they're shown as leaving.
+const RESTART_SWEEP_MS = 30_000;
 // Cloudflare caps WebSocket messages at 1 MiB; ~40 drawings is ~500 KB.
 const HISTORY_CHUNK = 40;
 const COLOR_COUNT = 16;
@@ -51,7 +54,10 @@ function send(ws, obj) {
  *
  * Sockets use the Hibernation API, so the object can sleep between messages. Anything a
  * socket needs to remember (who it is, which room it's in) lives in its attachment; shared
- * state (history, visitors, reconnect grace windows) lives in SQLite.
+ * state (history, visitors, who is in which room) lives in SQLite.
+ *
+ * Room membership is the `presence` table, not the live sockets, so it survives restarts: a
+ * reconnect from someone already listed is a silent rejoin, never a second "Now entering".
  */
 export class Hub extends DurableObject {
   constructor(ctx, env) {
@@ -61,9 +67,24 @@ export class Hub extends DurableObject {
       seq INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT NOT NULL, ts INTEGER NOT NULL, data TEXT NOT NULL)`);
     this.sql.exec('CREATE INDEX IF NOT EXISTS entries_room ON entries (room, seq)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS visitors (vid TEXT PRIMARY KEY, ts INTEGER NOT NULL)');
-    // People who dropped off recently. They still count as in the room until `expires`.
-    this.sql.exec(`CREATE TABLE IF NOT EXISTS grace (
-      id TEXT PRIMARY KEY, room TEXT NOT NULL, name TEXT NOT NULL, color INTEGER NOT NULL, expires INTEGER NOT NULL)`);
+    // Who is in each room. `expires` is NULL while connected; once they drop it's the end of
+    // their reconnect grace window, after which they're announced as leaving.
+    this.sql.exec('DROP TABLE IF EXISTS grace');
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS presence (
+      id TEXT PRIMARY KEY, room TEXT NOT NULL, name TEXT NOT NULL, color INTEGER NOT NULL, expires INTEGER)`);
+
+    // Heartbeats are answered by the runtime without waking the object.
+    ctx.setWebSocketAutoResponse(new WebSocketRequestResponsePair('ping', 'pong'));
+
+    // If anyone is listed as connected but has no socket, we just restarted: sweep them soon.
+    ctx.blockConcurrencyWhile(async () => {
+      const live = new Set(ctx.getWebSockets().map((ws) => ws.deserializeAttachment()?.id));
+      const orphaned = this.sql
+        .exec('SELECT id FROM presence WHERE expires IS NULL')
+        .toArray()
+        .some((r) => !live.has(r.id));
+      if (orphaned) await this.scheduleAlarm(Date.now() + RESTART_SWEEP_MS);
+    });
   }
 
   // ---------- connection lifecycle ----------
@@ -129,22 +150,26 @@ export class Hub extends DurableObject {
     if (a.vid) this.touchVisitor(a.vid);
     if (a.room && !this.otherSocketInRoom(a.id, a.room, ws)) {
       const expires = Date.now() + RECONNECT_GRACE_MS;
-      this.sql.exec(
-        'INSERT OR REPLACE INTO grace (id, room, name, color, expires) VALUES (?, ?, ?, ?, ?)',
-        a.id, a.room, a.name, a.color, expires,
-      );
+      this.sql.exec('UPDATE presence SET expires = ? WHERE id = ? AND room = ?', expires, a.id, a.room);
       await this.scheduleAlarm(expires);
     }
     this.broadcastStats(ws);
   }
 
-  // Runs when a grace window ends, and hourly to prune anything older than a day.
+  // Runs when a grace window ends, after restarts, and hourly to prune anything over a day old.
   async alarm() {
     const now = Date.now();
-    const expired = this.sql.exec('SELECT * FROM grace WHERE expires <= ?', now).toArray();
-    for (const g of expired) {
-      this.sql.exec('DELETE FROM grace WHERE id = ?', g.id);
-      this.announce(g.room, 'out', g.name, g.color);
+
+    // Listed as connected but no socket: they were lost in a restart. Start their grace window.
+    const live = new Set(this.openSockets().map((ws) => ws.deserializeAttachment().id));
+    for (const p of this.sql.exec('SELECT id FROM presence WHERE expires IS NULL').toArray()) {
+      if (!live.has(p.id)) this.sql.exec('UPDATE presence SET expires = ? WHERE id = ?', now + RECONNECT_GRACE_MS, p.id);
+    }
+
+    const expired = this.sql.exec('SELECT * FROM presence WHERE expires <= ?', now).toArray();
+    for (const p of expired) {
+      this.sql.exec('DELETE FROM presence WHERE id = ?', p.id);
+      this.announce(p.room, 'out', p.name, p.color);
     }
     if (expired.length) this.broadcastLobby();
 
@@ -158,7 +183,7 @@ export class Hub extends DurableObject {
     this.sql.exec('DELETE FROM visitors WHERE ts < ?', cutoff);
     if (this.visitorCount() !== before) this.broadcastStats();
 
-    const next = this.sql.exec('SELECT MIN(expires) AS e FROM grace').one().e;
+    const next = this.sql.exec('SELECT MIN(expires) AS e FROM presence').one().e;
     await this.ctx.storage.setAlarm(Math.min(next ?? Infinity, now + PRUNE_EVERY_MS));
   }
 
@@ -173,16 +198,16 @@ export class Hub extends DurableObject {
     if (!ROOMS.includes(room) || !a.hello) return;
     if (a.room && a.room !== room) this.leave(ws, a);
 
-    const grace = this.sql.exec('SELECT * FROM grace WHERE id = ?', a.id).toArray()[0];
-    if (grace && grace.room !== room) {
+    const seat = this.sql.exec('SELECT * FROM presence WHERE id = ?', a.id).toArray()[0];
+    if (seat && seat.room !== room) {
       // They dropped from one room and came back to another: finish the old leave now.
-      this.sql.exec('DELETE FROM grace WHERE id = ?', a.id);
-      this.announce(grace.room, 'out', grace.name, grace.color);
+      this.sql.exec('DELETE FROM presence WHERE id = ?', a.id);
+      this.announce(seat.room, 'out', seat.name, seat.color);
     }
 
-    // Reconnect within the grace window (or a second tab): take the seat back silently.
-    if ((grace && grace.room === room) || this.otherSocketInRoom(a.id, room, ws)) {
-      this.sql.exec('DELETE FROM grace WHERE id = ?', a.id);
+    // Already in this room (reconnect, reload, restart, second tab): take the seat back silently.
+    if (seat && seat.room === room) {
+      this.sql.exec('UPDATE presence SET expires = NULL, name = ?, color = ? WHERE id = ?', a.name, a.color, a.id);
       a.room = room;
       ws.serializeAttachment(a);
       this.sendHistory(ws, room, true);
@@ -192,6 +217,7 @@ export class Hub extends DurableObject {
 
     if (this.members(room).size >= ROOM_CAPACITY) return send(ws, { t: 'error', reason: 'full' });
 
+    this.sql.exec('INSERT INTO presence (id, room, name, color, expires) VALUES (?, ?, ?, ?, NULL)', a.id, room, a.name, a.color);
     a.room = room;
     ws.serializeAttachment(a);
     const entry = this.record(room, { k: 'in', name: a.name, color: a.color, ts: Date.now() });
@@ -206,6 +232,7 @@ export class Hub extends DurableObject {
     a.room = null;
     ws.serializeAttachment(a);
     if (this.otherSocketInRoom(a.id, room, ws)) return;
+    this.sql.exec('DELETE FROM presence WHERE id = ?', a.id);
     this.announce(room, 'out', a.name, a.color);
     this.broadcastLobby();
   }
@@ -261,15 +288,11 @@ export class Hub extends DurableObject {
     });
   }
 
-  // Everyone in a room: connected sockets (one per person) plus anyone inside their grace window.
+  // Everyone in a room, including anyone inside their reconnect grace window.
   members(room) {
     const roster = new Map();
-    for (const ws of this.openSockets()) {
-      const a = ws.deserializeAttachment();
-      if (a.room === room && !roster.has(a.id)) roster.set(a.id, { name: a.name, color: a.color });
-    }
-    for (const g of this.sql.exec('SELECT * FROM grace WHERE room = ?', room)) {
-      if (!roster.has(g.id)) roster.set(g.id, { name: g.name, color: g.color });
+    for (const p of this.sql.exec('SELECT id, name, color FROM presence WHERE room = ?', room)) {
+      roster.set(p.id, { name: p.name, color: p.color });
     }
     return roster;
   }
