@@ -1153,18 +1153,22 @@ function layout() {
   const availH = vh - CREDIT_H;
   ds.style.transform = 'none';
   const w = ds.offsetWidth, h = ds.offsetHeight;
-  fit.style.marginBottom = CREDIT_H + 'px';
 
-  // Big screens: show the whole DS.
+  // Big screens: show the whole DS. The container clips, so give it a margin of room for
+  // what pokes out past the shell (the power slider, drop shadows). Negative margins cancel
+  // that room out, so the DS stays centered exactly as before.
   let s = Math.min((vw - 32) / w, (availH - 32) / h);
   if (s >= 1.1) {
     if (s >= 2) s = Math.floor(s * 4) / 4;
+    const room = 40;
     state.scale = s;
-    ds.style.transform = `scale(${s})`;
-    fit.style.width = w * s + 'px';
-    fit.style.height = h * s + 'px';
+    ds.style.transform = `translate(${room}px, ${room}px) scale(${s})`;
+    fit.style.width = w * s + 2 * room + 'px';
+    fit.style.height = h * s + 2 * room + 'px';
+    fit.style.margin = `-${room}px -${room}px ${CREDIT_H - room}px`;
     return;
   }
+  fit.style.margin = `0 0 ${CREDIT_H}px`;
 
   // Phones: zoom in until the two screens fill the view and let the shell run off the edges,
   // like a close-up of the DS.
