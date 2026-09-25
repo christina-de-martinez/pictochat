@@ -39,7 +39,7 @@
 
 * { box-sizing: border-box; }
 
-html, body { height: 100%; }
+html, body { height: 100%; overflow: hidden; }
 body {
   margin: 0;
   height: 100dvh;
@@ -60,7 +60,9 @@ button { font: inherit; color: inherit; }
 
 /* ---------- the DS shell (native px, scaled by JS) ---------- */
 
-#fit { position: relative; }
+/* Sized by JS to exactly the scaled DS. Clipping keeps the unscaled DS from ever making
+   the page wider than the screen, which makes iOS Safari zoom the whole page out. */
+#fit { position: relative; overflow: hidden; }
 #ds {
   position: absolute;
   left: 0; top: 0;
@@ -296,13 +298,6 @@ body.powered-off .screen::after { opacity: 1; pointer-events: auto; }
   --shell-gloss: rgb(255 255 255 / .35); --rim: #a3101c; --rim-edge: #4f050c; --grille: #4d040a;
 }
 
-/* Phones: drop the shell and controls, keep just the two screens. */
-body.bare .half { width: auto; height: auto; padding: 4px; border-radius: 10px; }
-body.bare .half.upper { border-radius: 10px 10px 4px 4px; }
-body.bare .half.lower { border-radius: 4px 4px 10px 10px; }
-body.bare .bezel { padding: 3px; box-shadow: none; }
-body.bare .speaker, body.bare .dpad, body.bare .face, body.bare .startselect, body.bare .shoulder, body.bare .power-switch { display: none; }
-body.bare .hinge { width: 240px; height: 8px; }
 
 .screen {
   position: relative;

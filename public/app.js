@@ -1076,33 +1076,51 @@ addEventListener(
 
 // ---------- layout ----------
 
-function fitScale(margin) {
-  const ds = $('#ds');
-  const w = ds.offsetWidth, h = ds.offsetHeight;
-  // Leave room at the bottom for the credit line.
-  const credit = 28;
-  return { w, h, s: Math.min((innerWidth - margin) / w, (innerHeight - margin - credit) / h) };
-}
+// The layout viewport, not innerWidth/innerHeight: those change if iOS pinch-zooms the page.
+const viewport = () => ({ vw: document.documentElement.clientWidth, vh: document.documentElement.clientHeight });
+const CREDIT_H = 28; // room at the bottom for the credit line
 
 function layout() {
   const ds = $('#ds');
-  // Show the whole DS when it fits comfortably, otherwise just the screens.
-  document.body.classList.remove('bare');
-  let { w, h, s } = fitScale(32);
-  if (s < 1.1) {
-    document.body.classList.add('bare');
-    ({ w, h, s } = fitScale(6));
+  const fit = $('#fit');
+  const { vw, vh } = viewport();
+  const availH = vh - CREDIT_H;
+  ds.style.transform = 'none';
+  const w = ds.offsetWidth, h = ds.offsetHeight;
+  fit.style.marginBottom = CREDIT_H + 'px';
+
+  // Big screens: show the whole DS.
+  let s = Math.min((vw - 32) / w, (availH - 32) / h);
+  if (s >= 1.1) {
+    if (s >= 2) s = Math.floor(s * 4) / 4;
+    state.scale = s;
+    ds.style.transform = `scale(${s})`;
+    fit.style.width = w * s + 'px';
+    fit.style.height = h * s + 'px';
+    return;
   }
-  if (s >= 2) s = Math.floor(s * 4) / 4;
+
+  // Phones: zoom in until the two screens fill the view and let the shell run off the edges,
+  // like a close-up of the DS.
+  const d = ds.getBoundingClientRect();
+  const [top, bottom] = [...ds.querySelectorAll('.bezel')].map((b) => b.getBoundingClientRect());
+  const x0 = top.left - d.left, x1 = top.right - d.left;
+  const y0 = top.top - d.top, y1 = bottom.bottom - d.top;
+  const pad = 10; // a sliver of shell stays visible around the screens
+  s = Math.min((vw - 2 * pad) / (x1 - x0), (availH - 2 * pad) / (y1 - y0));
+  const tx = vw / 2 - (s * (x0 + x1)) / 2;
+  const ty = availH / 2 - (s * (y0 + y1)) / 2;
   state.scale = s;
-  ds.style.transform = `scale(${s})`;
-  $('#fit').style.width = w * s + 'px';
-  $('#fit').style.height = h * s + 'px';
-  $('#fit').style.marginBottom = '28px';
+  ds.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+  fit.style.width = vw + 'px';
+  fit.style.height = availH + 'px';
 }
 addEventListener('resize', layout);
 
 // ---------- boot ----------
+
+// Size the DS right away; the font wait below can take a few seconds on slow connections.
+layout();
 
 try {
   await Promise.race([
