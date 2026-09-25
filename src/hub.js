@@ -1,4 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
+import { ID_RE, readVid } from './visitor.js';
 
 const ROOMS = ['A', 'B', 'C', 'D'];
 const ROOM_CAPACITY = 16;
@@ -19,7 +20,6 @@ const RESTART_SWEEP_MS = 30_000;
 const HISTORY_CHUNK = 40;
 const COLOR_COUNT = 16;
 const NAME_MAX = 10;
-const ID_RE = /^[\w-]{8,64}$/;
 
 function cleanName(v) {
   if (typeof v !== 'string') return 'Guest';
@@ -93,7 +93,13 @@ export class Hub extends DurableObject {
     if (request.headers.get('Upgrade') !== 'websocket') return new Response('expected websocket', { status: 426 });
     const { 0: client, 1: server } = new WebSocketPair();
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ id: crypto.randomUUID(), vid: null, name: 'Guest', color: 0, hello: false, room: null, lastSend: 0 });
+    // Trust the visitor cookie sent with the upgrade; only fall back to the page's copy without one.
+    const vid = readVid(request);
+    server.serializeAttachment({ id: crypto.randomUUID(), vid, name: 'Guest', color: 0, hello: false, room: null, lastSend: 0 });
+    if (vid) {
+      this.touchVisitor(vid);
+      this.broadcastStats(server);
+    }
     if ((await this.ctx.storage.getAlarm()) == null) await this.ctx.storage.setAlarm(Date.now() + PRUNE_EVERY_MS);
     return new Response(null, { status: 101, webSocket: client });
   }
