@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pictochat",
+  "main": "src/worker.js",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "HUB", "class_name": "Hub" }]
+  },
+  // SQLite-backed Durable Objects are available on the Workers free plan.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Hub"] }],
+  "observability": { "enabled": true },
+  // Keep the workers.dev address working alongside the custom domain.
+  "workers_dev": true,
+  // Cloudflare creates the DNS records and certificates for these on deploy.
+  "routes": [
+    { "pattern": "pictochat.lol", "custom_domain": true },
+    { "pattern": "www.pictochat.lol", "custom_domain": true }
+  ]
+}

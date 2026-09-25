@@ -1,0 +1,17 @@
+{
+  "name": "pictochat",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PictoChat for the web. No accounts, messages vanish after 24 hours.",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "wrangler": "^4.139.0"
+  }
+}

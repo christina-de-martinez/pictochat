@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>PictoChat</title>
+  <meta name="description" content="PictoChat with friends on the web.">
+  <meta name="theme-color" content="#141518">
+  <!-- Link previews (iMessage, Slack, Discord, X, etc.) -->
+  <link rel="canonical" href="https://pictochat.lol/">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://pictochat.lol/">
+  <meta property="og:site_name" content="PictoChat">
+  <meta property="og:title" content="PictoChat">
+  <meta property="og:description" content="PictoChat with friends on the web.">
+  <meta property="og:image" content="https://pictochat.lol/og.png">
+  <meta property="og:image:width" content="1600">
+  <meta property="og:image:height" content="900">
+  <meta property="og:image:alt" content="A pink DS Lite running PictoChat, next to the words pictochat.lol">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PictoChat">
+  <meta name="twitter:description" content="PictoChat with friends on the web.">
+  <meta name="twitter:image" content="https://pictochat.lol/og.png">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=block" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body data-screen="boot">
+  <div id="fit">
+    <div id="ds">
+      <!-- ============ TOP SCREEN ============ -->
+      <div class="half upper">
+        <div class="speaker left"></div>
+        <div class="bezel">
+          <div class="screen" id="top">
+            <div class="signal" id="signal" title="Connection"><i></i><i></i><i></i></div>
+
+            <section class="view" data-view="profile">
+              <h1 class="logo">Picto<span>Chat</span></h1>
+              <p class="blurb">Pick a name and your favorite color.<br>No sign up. Messages vanish after 24 hours.</p>
+              <div class="card preview" id="profile-preview">
+                <canvas width="464" height="160"></canvas>
+                <span class="tag"></span>
+              </div>
+            </section>
+
+            <section class="view" data-view="lobby">
+              <h1 class="logo small">Picto<span>Chat</span></h1>
+              <div id="lobby-info"></div>
+            </section>
+
+            <section class="view" data-view="room">
+              <div class="room-strip">
+                <b id="room-letter">A</b>
+                <span id="room-count">1</span>
+              </div>
+              <div id="log"></div>
+              <div id="scrollbar"><div id="thumb"></div></div>
+            </section>
+
+            <div class="presence" id="presence" hidden>
+              <span><i class="dot"></i><b id="online-count">0</b> <span id="online-label">people online</span></span>
+              <span><b id="today-count">0</b> <span id="today-label">visitors today</span></span>
+            </div>
+
+            <div class="toast" id="toast" hidden></div>
+          </div>
+        </div>
+        <div class="speaker right"></div>
+      </div>
+
+      <div class="hinge" aria-hidden="true">
+        <span class="shoulder l"></span>
+        <div class="barrel"><i class="mic"></i></div>
+        <span class="shoulder r"><i class="led"></i><i class="led power"></i></span>
+      </div>
+
+      <!-- ============ BOTTOM SCREEN ============ -->
+      <div class="half lower">
+        <button class="power-switch" id="power" aria-label="Power" title="Power" tabindex="-1"></button>
+        <div class="bezel">
+          <div class="screen" id="bottom">
+
+            <section class="view" data-view="profile">
+              <div class="titlebar">Your name tag</div>
+              <label class="field">
+                <span>Name</span>
+                <input id="name-input" maxlength="10" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" placeholder="Your name">
+              </label>
+              <div class="field-label">Favorite color</div>
+              <div class="swatches" id="swatches"></div>
+              <button class="btn big" id="profile-ok">OK</button>
+            </section>
+
+            <section class="view" data-view="lobby">
+              <div class="titlebar">Choose a Chat Room.</div>
+              <div class="rooms" id="rooms"></div>
+              <div class="lobby-bar">
+                <button class="btn" id="edit-profile">Name tag</button>
+                <button class="btn" id="sound-toggle">Sound on</button>
+                <button class="btn primary" id="join" disabled>Join</button>
+              </div>
+            </section>
+
+            <section class="view" data-view="room">
+              <div class="tools" id="tools">
+                <button class="btn tool" data-act="exit" title="Leave room"><svg viewBox="0 0 9 9"><path d="M1 1h1v1h1v1h1v1h1V3h1V2h1V1h1v1H7v1H6v1H5v1h1v1h1v1h1v1H7V7H6V6H5V5H4v1H3v1H2v1H1V7h1V6h1V5h1V4H3V3H2V2H1z"/></svg></button>
+                <button class="btn tool" data-act="up" title="Scroll up"><svg viewBox="0 0 9 9"><path d="M4 2h1v1h1v1h1v1h1v1H1V5h1V4h1V3h1z"/></svg></button>
+                <button class="btn tool" data-act="down" title="Scroll down"><svg viewBox="0 0 9 9"><path d="M1 3h7v1H7v1H6v1H5v1H4V6H3V5H2V4H1z"/></svg></button>
+                <button class="btn tool on" data-tool="pen" title="Pencil"><svg viewBox="0 0 9 9"><path d="M6 0h1v1h1v1h1v1H8v1H7v1H6v1H5v1H4v1H3v1H0V6h1V5h1V4h1V3h1V2h1V1h1z" fill="#f2c14e"/><path d="M0 6h1v1h1v1h1v1H0z"/><path d="M6 0h1v1h1v1h1v1H8V2H7V1H6z" fill="#e85d75"/></svg></button>
+                <button class="btn tool" data-tool="eraser" title="Eraser"><svg viewBox="0 0 9 9"><path d="M5 1h1v1h1v1h1v1H7v1H6v1H5v1H4v1H2V7H1V6H0V5h1V4h1V3h1V2h1V1z" fill="#f49ac1"/><path d="M1 5h1v1h1v1h1v1H2V7H1z" fill="#fff"/></svg></button>
+                <button class="btn tool on" data-size="thick" title="Thick"><svg viewBox="0 0 9 9"><rect x="2" y="2" width="5" height="5"/></svg></button>
+                <button class="btn tool" data-size="thin" title="Thin"><svg viewBox="0 0 9 9"><rect x="4" y="4" width="2" height="2"/></svg></button>
+                <button class="btn tool mode on" data-mode="latin">ABC</button>
+                <button class="btn tool mode" data-mode="accent">àé</button>
+                <button class="btn tool mode" data-mode="kana">あ</button>
+                <button class="btn tool mode" data-mode="symbol">?!</button>
+                <button class="btn tool mode" data-mode="emoji">☺</button>
+              </div>
+
+              <div class="pad card" id="pad">
+                <canvas id="draw" width="464" height="160"></canvas>
+                <span class="tag" id="mytag"></span>
+                <i id="caret"></i>
+              </div>
+
+              <div class="kbd" id="kbd"></div>
+
+              <div class="actions">
+                <button class="btn send" id="send"><svg viewBox="0 0 11 9"><path d="M0 0h2v1h2v1h2v1h2v1h2v1H8v1H6v1H4v1H2v1H0V5h5V4H0z"/></svg>SEND</button>
+                <button class="btn" id="copy">COPY</button>
+                <button class="btn" id="clear">CLEAR</button>
+              </div>
+            </section>
+
+          </div>
+        </div>
+        <div class="dpad" aria-hidden="true">
+          <button data-pad="up" tabindex="-1"></button>
+          <button data-pad="left" tabindex="-1"></button>
+          <i class="hub"></i>
+          <button data-pad="right" tabindex="-1"></button>
+          <button data-pad="down" tabindex="-1"></button>
+        </div>
+        <div class="face" aria-hidden="true">
+          <button data-pad="x" tabindex="-1">X</button>
+          <button data-pad="y" tabindex="-1">Y</button>
+          <button data-pad="a" tabindex="-1">A</button>
+          <button data-pad="b" tabindex="-1">B</button>
+        </div>
+        <div class="startselect" aria-hidden="true">
+          <span><button data-pad="start" tabindex="-1"></button>START</span>
+          <span><button data-pad="select" tabindex="-1"></button>SELECT</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="ghost" hidden></div>
+  <footer class="credit">made by <a href="https://christinacodes.dev" target="_blank" rel="noopener">Christina</a></footer>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

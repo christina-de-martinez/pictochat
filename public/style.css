@@ -1,0 +1,551 @@
+:root {
+  /* DS Lite shell, Polar White by default. Secret colorways override these on #ds. */
+  --shell-hi: #fbfcfd;
+  --shell-mid: #f3f4f6;
+  --shell-lo: #dfe3e8;
+  --shell-edge: #b8c0c9;
+  --shell-gloss: #ffffff;
+  --rim: #e2e5e9;
+  --rim-edge: #c9cfd5;
+  --grille: #8f99a3;
+  --shoulder-hi: #d3d8dd;
+  --shoulder-lo: #b4bcc4;
+  --btn-hi: #ffffff;
+  --btn-lo: #e0e4e8;
+  --btn-edge: #c3cad1;
+  --btn-text: #9aa3ad;
+  --btn-arrow: #aab3bc;
+  --led-off: #a2abb4; /* unlit hinge light: a gray window on light shells */
+  --bezel: #1f242a;
+  --screen: #eef2f5;
+  --grid: #dde4ea;
+  --paper: #ffffff;
+  --rule: #d9e0e7;
+  --ink: #18181f;
+  --ui-text: #34404c;
+  --ui-muted: #7a8793;
+  --key-hi: #ffffff;
+  --key-lo: #e3e8ed;
+  --key-edge: #97a3ae;
+  --on-hi: #d4ecfe;
+  --on-lo: #93cdf6;
+  --on-edge: #2f86c9;
+  --bar: #5d7a92;
+  --bar-text: #ffffff;
+  --send-hi: #ffe7a8;
+  --send-lo: #f7c552;
+  --send-edge: #b8860b;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  height: 100dvh;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: #141518;
+  font-family: 'DotGothic16', ui-monospace, monospace;
+  color: var(--ui-text);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+canvas { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+svg { display: block; shape-rendering: crispEdges; }
+button { font: inherit; color: inherit; }
+
+/* ---------- the DS shell (native px, scaled by JS) ---------- */
+
+#fit { position: relative; }
+#ds {
+  position: absolute;
+  left: 0; top: 0;
+  transform-origin: 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+/* An open DS Lite in Polar White, face-on. Each half is 500x250 with its screen centered. */
+.half {
+  position: relative;
+  width: 500px; height: 250px;
+  display: grid; place-items: center;
+  background: linear-gradient(170deg, var(--shell-hi) 0%, var(--shell-mid) 55%, var(--shell-lo) 100%);
+  box-shadow:
+    inset 0 2px 0 var(--shell-gloss),
+    inset 0 -3px 6px rgb(0 0 0 / .06),
+    0 0 0 1px var(--shell-edge),
+    0 14px 34px rgb(0 0 0 / .22);
+}
+.half.upper { border-radius: 26px 26px 10px 10px; }
+.half.lower { border-radius: 10px 10px 30px 30px; }
+
+/* Glossy black LCD surround with the thin light rim you see on the white Lite. */
+.bezel {
+  padding: 5px;
+  background: linear-gradient(160deg, #3a3e44, #1b1e22 60%);
+  border-radius: 4px;
+  box-shadow: 0 0 0 3px var(--rim), 0 0 0 4px var(--rim-edge);
+}
+
+/* Round speaker grilles either side of the top screen. */
+.speaker {
+  position: absolute; top: 72px;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: radial-gradient(circle, var(--grille) 1.2px, transparent 1.6px) 0 0 / 5px 5px;
+  -webkit-mask: radial-gradient(circle, #000 60%, transparent 62%);
+          mask: radial-gradient(circle, #000 60%, transparent 62%);
+}
+.speaker.left { left: 47px; }
+.speaker.right { right: 47px; }
+
+/* Hinge: shoulder buttons on the ends, a cylindrical barrel with the mic between them. */
+.hinge { width: 500px; height: 20px; display: flex; align-items: stretch; }
+.shoulder {
+  width: 78px;
+  background: linear-gradient(var(--shoulder-hi), var(--shoulder-lo));
+  box-shadow: inset 0 1px 0 var(--shell-gloss), 0 0 0 1px var(--shell-edge);
+}
+.shoulder.l { border-radius: 10px 3px 3px 10px; margin-right: 2px; }
+.shoulder.r { border-radius: 3px 10px 10px 3px; margin-left: 2px; }
+/* Status lights on the right end of the hinge: two tall, skinny bars, power lit green.
+   They wrap around the cylinder, so they're brightest where the barrel catches the light
+   (about 40% down) and fade out as the surface curves away at the top and bottom. */
+.shoulder.r { position: relative; }
+.led {
+  --unlit: linear-gradient(
+    transparent, var(--led-off) 22%, color-mix(in srgb, var(--led-off), #fff 45%) 40%,
+    var(--led-off) 62%, color-mix(in srgb, var(--led-off), #000 25%) 80%, transparent);
+  /* Sits high on the hinge with a gap below, like the real one. */
+  position: absolute; top: 1px; bottom: 6px; right: 19px; width: 2px; border-radius: 1px;
+  background: var(--unlit);
+}
+.led.power {
+  right: 14px;
+  background: linear-gradient(
+    rgb(90 150 50 / 0), rgb(120 190 70 / .85) 20%, #d4ffa6 40%,
+    #93dc55 62%, rgb(70 130 35 / .75) 82%, rgb(70 130 35 / 0));
+}
+/* A soft glow that sits on the lit middle of the power light, not the faded ends. */
+.led.power::after {
+  content: ''; position: absolute; left: -2px; right: -2px; top: 25%; bottom: 25%;
+  border-radius: 50%;
+  box-shadow: 0 0 4px 1px rgb(155 227 92 / .5);
+}
+.barrel {
+  flex: 1; position: relative;
+  background: linear-gradient(var(--shell-lo), var(--shell-hi) 40%, var(--shell-mid) 60%, var(--shell-edge));
+  box-shadow: 0 0 0 1px var(--shell-edge);
+}
+.mic {
+  position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px;
+  border-radius: 50%; background: #4a5159; box-shadow: inset 0 1px 1px #000;
+}
+
+/* Lower-half controls. They sit in the 117px margins either side of the bottom screen. */
+.dpad, .face, .startselect { position: absolute; }
+.dpad button, .face button, .startselect button {
+  padding: 0; border: 0; cursor: pointer; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The cross is one rounded shape with one gradient and one shadow, so the arms read as a
+   single piece. The four buttons sit on top of it as transparent hit areas. */
+.dpad {
+  left: 27px; top: 62px; width: 63px; height: 63px;
+  display: grid; grid-template: repeat(3, 21px) / repeat(3, 21px);
+  /* Same drop shadow as the ABXY buttons. */
+  filter: drop-shadow(0 2px 1px rgb(0 0 0 / .25));
+}
+/* ::before is the 1px edge ring (like the face buttons' outline), ::after the face inset inside it. */
+.dpad::before, .dpad::after { content: ''; position: absolute; inset: 0; }
+.dpad::before {
+  background: var(--btn-edge);
+  clip-path: path('M25 0H38Q42 0 42 4V21H59Q63 21 63 25V38Q63 42 59 42H42V59Q42 63 38 63H25Q21 63 21 59V42H4Q0 42 0 38V25Q0 21 4 21H21V4Q21 0 25 0Z');
+}
+.dpad::after {
+  /* A soft top highlight over a gentle gradient, so the lower arm doesn't sink into the shell. */
+  background:
+    radial-gradient(90% 60% at 50% 30%, rgb(255 255 255 / .1), transparent 70%),
+    linear-gradient(var(--btn-hi), color-mix(in srgb, var(--btn-hi) 35%, var(--btn-lo)));
+  clip-path: path('M25 1H38Q41 1 41 4V22H59Q62 22 62 25V38Q62 41 59 41H41V59Q41 62 38 62H25Q22 62 22 59V41H4Q1 41 1 38V25Q1 22 4 22H22V4Q22 1 25 1Z');
+}
+.dpad button, .dpad .hub { z-index: 1; }
+.dpad button {
+  position: relative; background: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.dpad [data-pad="up"] { grid-area: 1 / 2; border-radius: 4px 4px 0 0; }
+.dpad [data-pad="left"] { grid-area: 2 / 1; border-radius: 4px 0 0 4px; }
+.dpad .hub { grid-area: 2 / 2; position: relative; }
+.dpad .hub::after {
+  content: ''; display: block; width: 9px; height: 9px; margin: 6px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 35%, var(--btn-lo), var(--btn-hi));
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / .2);
+}
+.dpad [data-pad="right"] { grid-area: 2 / 3; border-radius: 0 4px 4px 0; }
+.dpad [data-pad="down"] { grid-area: 3 / 2; border-radius: 0 0 4px 4px; }
+/* Same 7x4 triangle for every arrow, each nudged 1px toward its outer end. */
+.dpad button::after { content: ''; background: var(--btn-arrow); }
+.dpad [data-pad="up"]::after,
+.dpad [data-pad="down"]::after { width: 7px; height: 4px; }
+.dpad [data-pad="left"]::after,
+.dpad [data-pad="right"]::after { width: 4px; height: 7px; }
+.dpad [data-pad="up"]::after { clip-path: polygon(50% 0, 100% 100%, 0 100%); transform: translateY(-1px); }
+.dpad [data-pad="down"]::after { clip-path: polygon(0 0, 100% 0, 50% 100%); transform: translateY(1px); }
+.dpad [data-pad="left"]::after { clip-path: polygon(0 50%, 100% 0, 100% 100%); transform: translateX(-1px); }
+.dpad [data-pad="right"]::after { clip-path: polygon(0 0, 100% 50%, 0 100%); transform: translateX(1px); }
+.dpad button:active { background: rgb(0 0 0 / .07); }
+
+.face { right: 23px; top: 58px; width: 72px; height: 72px; }
+.face button {
+  position: absolute; width: 24px; height: 24px; border-radius: 50%;
+  font: 11px 'DotGothic16', monospace; color: var(--btn-text);
+  background: radial-gradient(circle at 50% 30%, var(--btn-hi), var(--btn-lo) 75%);
+  box-shadow: 0 2px 1px rgb(0 0 0 / .25), 0 0 0 1px var(--btn-edge);
+}
+.face button:active { transform: translateY(1px); box-shadow: 0 1px 0 rgb(0 0 0 / .25), 0 0 0 1px var(--btn-edge); }
+.face [data-pad="x"] { left: 24px; top: 0; }
+.face [data-pad="y"] { left: 0; top: 24px; }
+.face [data-pad="a"] { left: 48px; top: 24px; }
+.face [data-pad="b"] { left: 24px; top: 48px; }
+
+.startselect {
+  right: 40px; top: 160px;
+  display: grid; gap: 7px;
+  font-size: 11px; color: var(--btn-text); letter-spacing: 1px;
+}
+.startselect span { display: flex; align-items: center; gap: 6px; }
+.startselect button {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, var(--btn-hi), var(--btn-lo));
+  box-shadow: 0 1px 1px rgb(0 0 0 / .25), 0 0 0 1px var(--btn-edge);
+}
+.startselect button:active { transform: translateY(1px); }
+
+/* Power slider on the right edge of the lower half, like the real Lite. Small on purpose. */
+.power-switch {
+  position: absolute; right: -4px; top: 30px; width: 5px; height: 24px;
+  padding: 0; border: 0; cursor: pointer;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(90deg, var(--shell-lo), var(--shell-edge));
+  box-shadow: 1px 1px 1px rgb(0 0 0 / .2);
+}
+.power-switch::after {
+  content: ''; position: absolute; left: 1px; right: 0; top: 3px; height: 8px; border-radius: 0 2px 2px 0;
+  background: linear-gradient(90deg, var(--shell-hi), var(--shell-mid));
+  box-shadow: 0 1px 1px rgb(0 0 0 / .25);
+  transition: transform .15s;
+}
+body.powered-off .power-switch::after { transform: translateY(10px); }
+
+/* Powered off: the green light goes out and both screens go fully dark, like an unlit LCD
+   (dark glass with a faint diagonal reflection). */
+/* The unlit look sits on top of the power light as ::before, so it can be faded or flashed. */
+.led.power::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  background: var(--unlit); opacity: 0;
+}
+body.powered-off .led.power::before { opacity: 1; }
+body.powered-off .led.power::after { opacity: 0; }
+
+/* Powering on: off for 200ms, on for 300ms, off for 200ms, then on for good. */
+body.booting .led.power::before { animation: led-boot-cover .7s steps(1, end); }
+body.booting .led.power::after { animation: led-boot-glow .7s steps(1, end); }
+@keyframes led-boot-cover { 0% { opacity: 1; } 28.571% { opacity: 0; } 71.429% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes led-boot-glow { 0% { opacity: 0; } 28.571% { opacity: 1; } 71.429% { opacity: 0; } 100% { opacity: 1; } }
+.screen::after {
+  content: ''; position: absolute; inset: 0; z-index: 50;
+  background:
+    linear-gradient(125deg, transparent 30%, rgb(255 255 255 / .035) 42%, transparent 55%),
+    linear-gradient(160deg, #1a1d21, #0c0e10 65%);
+  opacity: 0; pointer-events: none;
+  transition: opacity .5s;
+}
+body.powered-off .screen::after { opacity: 1; pointer-events: auto; }
+
+/* Secret colorways, unlocked with the Konami code. */
+#ds[data-shell="black"] {
+  --shell-hi: #43474d; --shell-mid: #2a2d31; --shell-lo: #17181b; --shell-edge: #0b0c0e;
+  --shell-gloss: rgb(255 255 255 / .16); --rim: #2c2f33; --rim-edge: #0e0f11; --grille: #0a0b0d;
+  --shoulder-hi: #34373c; --shoulder-lo: #1b1d20;
+  --btn-hi: #43464c; --btn-lo: #1d1f22; --btn-edge: #0c0d0f; --btn-text: #8d949c; --btn-arrow: #6f767e;
+  --led-off: #d3d8dd;
+}
+#ds[data-shell="pink"] {
+  --shell-hi: #fff1f3; --shell-mid: #fadde2; --shell-lo: #f1c2ca; --shell-edge: #d6959f;
+  --rim: #f9dde2; --rim-edge: #e2aab3; --grille: #c4838d;
+  --shoulder-hi: #f3cbd1; --shoulder-lo: #e2a6b0;
+  --btn-hi: #fffafa; --btn-lo: #f4d4d9; --btn-edge: #dfaab3; --btn-text: #bd8790; --btn-arrow: #d49ea7;
+  --led-off: #c9959e;
+}
+/* Crimson & Black: black lower half and hinge, glossy red top half. */
+#ds[data-shell="crimson"] {
+  --shell-hi: #3e4146; --shell-mid: #26282c; --shell-lo: #151619; --shell-edge: #0a0b0d;
+  --shell-gloss: rgb(255 255 255 / .14); --rim: #2a2c30; --rim-edge: #0d0e10; --grille: #0a0b0d;
+  --shoulder-hi: #32353a; --shoulder-lo: #191b1e;
+  --btn-hi: #404348; --btn-lo: #1b1d20; --btn-edge: #0b0c0e; --btn-text: #8a9199; --btn-arrow: #6c737b;
+  --led-off: #d3d8dd;
+}
+#ds[data-shell="crimson"] .half.upper {
+  --shell-hi: #e8404b; --shell-mid: #c01624; --shell-lo: #8c0a15; --shell-edge: #5a0610;
+  --shell-gloss: rgb(255 255 255 / .35); --rim: #a3101c; --rim-edge: #4f050c; --grille: #4d040a;
+}
+
+/* Phones: drop the shell and controls, keep just the two screens. */
+body.bare .half { width: auto; height: auto; padding: 4px; border-radius: 10px; }
+body.bare .half.upper { border-radius: 10px 10px 4px 4px; }
+body.bare .half.lower { border-radius: 4px 4px 10px 10px; }
+body.bare .bezel { padding: 3px; box-shadow: none; }
+body.bare .speaker, body.bare .dpad, body.bare .face, body.bare .startselect, body.bare .shoulder, body.bare .power-switch { display: none; }
+body.bare .hinge { width: 240px; height: 8px; }
+
+.screen {
+  position: relative;
+  width: 256px; height: 192px;
+  overflow: hidden;
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 8px 8px,
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 8px 8px,
+    var(--screen);
+}
+
+.view { display: none; position: absolute; inset: 0; }
+body[data-screen="profile"] .view[data-view="profile"],
+body[data-screen="lobby"] .view[data-view="lobby"],
+body[data-screen="room"] .view[data-view="room"] { display: block; }
+
+/* ---------- shared bits ---------- */
+
+.btn {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+  font-size: 11px; line-height: 1;
+  background: linear-gradient(var(--key-hi), var(--key-lo));
+  border: 1px solid var(--key-edge);
+  border-radius: 3px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.btn:active, .btn.on, .btn.down {
+  background: linear-gradient(var(--on-hi), var(--on-lo));
+  border-color: var(--on-edge);
+}
+.btn:disabled { opacity: .45; cursor: default; }
+.btn svg { fill: var(--ink); }
+
+.titlebar {
+  height: 16px; line-height: 16px;
+  padding: 0 6px;
+  font-size: 12px;
+  background: var(--bar); color: var(--bar-text);
+}
+
+.card {
+  position: relative;
+  width: 236px; height: 84px;
+  border: 2px solid var(--c, var(--bar));
+  border-radius: 3px;
+  background: repeating-linear-gradient(to bottom, var(--paper) 0 15px, var(--rule) 15px 16px);
+}
+.card canvas { width: 232px; height: 80px; }
+.tag {
+  position: absolute; left: 0; top: 0;
+  height: 16px; line-height: 16px;
+  padding: 0 5px;
+  font-size: 12px;
+  white-space: nowrap; overflow: hidden;
+  background: var(--c, var(--bar));
+  color: var(--tc, #fff);
+  border-bottom-right-radius: 3px;
+}
+
+.logo {
+  margin: 0; text-align: center;
+  font-size: 30px; font-weight: normal; letter-spacing: 1px;
+  color: #6b8297;
+  text-shadow: 1px 1px 0 #fff, 2px 2px 0 #c5d0da;
+}
+.logo span { color: #f08a24; }
+.logo.small { font-size: 18px; margin-top: 4px; }
+
+.signal { position: absolute; right: 5px; top: 4px; display: flex; gap: 1px; align-items: flex-end; z-index: 5; }
+.signal i { width: 3px; background: #b8c2cb; }
+.signal i:nth-child(1) { height: 4px; }
+.signal i:nth-child(2) { height: 7px; }
+.signal i:nth-child(3) { height: 10px; }
+.signal.on i { background: #37b24d; }
+body[data-screen="room"] .signal { right: 9px; }
+
+.toast {
+  position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%);
+  padding: 3px 8px; font-size: 12px; white-space: nowrap;
+  background: var(--ink); color: #fff; border-radius: 3px; z-index: 10;
+}
+
+/* Online / visitor counts along the bottom of the top screen (hidden inside a room). */
+.presence {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 18px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 6px;
+  font-size: 11px; color: var(--ui-text);
+  background: rgb(255 255 255 / .75);
+  border-top: 1px solid var(--key-edge);
+}
+.presence[hidden], body[data-screen="room"] .presence { display: none; }
+.presence b { font-weight: normal; color: var(--ink); }
+.presence .dot {
+  display: inline-block; width: 5px; height: 5px; margin-right: 4px; vertical-align: 1px;
+  background: #37b24d; box-shadow: 0 0 3px #37b24d;
+}
+
+/* ---------- profile ---------- */
+
+[data-view="profile"] .logo { margin-top: 4px; font-size: 26px; }
+.blurb { margin: 2px 0 6px; text-align: center; font-size: 11px; line-height: 15px; color: var(--ui-muted); }
+.preview { margin: 0 auto; }
+
+.field { display: flex; align-items: center; gap: 6px; margin: 10px 10px 6px; font-size: 12px; }
+.field input {
+  flex: 1; min-width: 0; height: 22px;
+  padding: 0 6px;
+  font: 16px 'DotGothic16', monospace;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--key-edge); border-radius: 3px;
+  outline: none;
+  user-select: text; -webkit-user-select: text;
+}
+.field input:focus { border-color: var(--on-edge); }
+.field-label { margin: 6px 10px 4px; font-size: 12px; }
+.swatches { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; margin: 0 10px; }
+.swatch {
+  height: 24px; border-radius: 3px; border: 2px solid transparent;
+  background: var(--c); cursor: pointer; padding: 0; touch-action: manipulation;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / .15);
+}
+.swatch.on { border-color: var(--ink); box-shadow: inset 0 0 0 2px #fff; }
+.btn.big { position: absolute; right: 10px; bottom: 8px; width: 70px; height: 26px; font-size: 14px; }
+
+/* ---------- lobby ---------- */
+
+#lobby-info { padding: 6px 10px; font-size: 12px; }
+#lobby-info .hint .tag { margin: 0 2px; }
+#lobby-info .hint { margin-top: 24px; text-align: center; line-height: 18px; color: var(--ui-muted); }
+#lobby-info h2 { margin: 0 0 6px; font-size: 13px; font-weight: normal; }
+.members { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 6px; }
+.members .tag { position: static; display: block; border-radius: 3px; }
+
+.rooms { padding: 5px 8px; display: grid; gap: 4px; }
+.room {
+  height: 32px; justify-content: flex-start; gap: 8px; padding: 0 6px;
+  font-size: 13px;
+}
+.room .letter {
+  width: 22px; height: 22px; line-height: 22px; text-align: center;
+  border-radius: 3px; background: var(--bar); color: var(--bar-text); font-size: 15px;
+}
+.room .count { margin-left: auto; font-size: 11px; color: var(--ui-muted); }
+.room .dots { display: grid; grid-template-columns: repeat(8, 4px); gap: 1px; }
+.room .dots i { width: 4px; height: 4px; background: #cbd3db; }
+.room .dots i.on { background: #37b24d; }
+.lobby-bar { position: absolute; left: 8px; right: 8px; bottom: 6px; display: flex; gap: 4px; }
+.lobby-bar .btn { height: 22px; flex: 1; font-size: 11px; }
+.btn.primary:not(:disabled) { background: linear-gradient(var(--send-hi), var(--send-lo)); border-color: var(--send-edge); }
+
+/* ---------- room: top screen ---------- */
+
+.room-strip {
+  position: absolute; left: 0; top: 0; bottom: 0; width: 14px;
+  background: var(--bar); color: var(--bar-text);
+  display: flex; flex-direction: column; align-items: center; padding-top: 3px; gap: 4px;
+  font-size: 11px;
+}
+.room-strip b { font-weight: normal; font-size: 13px; }
+#log {
+  position: absolute; left: 14px; top: 0; width: 236px; bottom: 0;
+  overflow-y: auto; scrollbar-width: none;
+  overscroll-behavior: contain;
+  padding: 2px 0;
+  touch-action: pan-y;
+}
+#log::-webkit-scrollbar { display: none; }
+#log .card { margin: 0 0 3px; cursor: pointer; }
+#log .card.selected { outline: 2px dashed var(--ink); outline-offset: -5px; }
+.sys {
+  display: flex; align-items: center; gap: 4px;
+  height: 18px; margin: 0 0 3px; padding: 0 4px;
+  font-size: 11px; color: var(--ui-text);
+  background: rgb(255 255 255 / .7);
+  border: 1px solid var(--key-edge); border-radius: 3px;
+}
+.sys .tag { position: static; border-radius: 2px; height: 14px; line-height: 14px; font-size: 11px; }
+#scrollbar { position: absolute; right: 0; top: 0; bottom: 0; width: 6px; background: #d0d8df; }
+#thumb { position: absolute; left: 1px; right: 1px; background: var(--bar); border-radius: 2px; }
+
+/* ---------- room: bottom screen ---------- */
+
+.tools {
+  position: absolute; left: 0; top: 0; width: 19px; height: 192px;
+  display: grid; grid-template-rows: repeat(12, 1fr); gap: 1px;
+}
+.tool { border-radius: 2px; }
+.tool svg { width: 9px; height: 9px; }
+.tool.mode { font-size: 11px; letter-spacing: -2px; }
+/* ☺ renders much smaller than あ in the same font size, so size it up to match. */
+.tool.mode[data-mode="emoji"] { font-size: 16px; letter-spacing: 0; line-height: 0; }
+.tools .sep { display: none; }
+
+.pad { position: absolute; left: 20px; top: 0; touch-action: none; cursor: crosshair; }
+.pad canvas { touch-action: none; }
+#caret {
+  position: absolute; width: 1px; height: 13px; background: var(--ink);
+  animation: blink 1s steps(1) infinite; pointer-events: none;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.kbd {
+  position: absolute; left: 20px; top: 86px; width: 190px; height: 106px;
+  display: grid; grid-template-columns: repeat(24, 1fr); grid-template-rows: repeat(5, 1fr);
+  gap: 1px;
+  touch-action: none;
+}
+.key { font-size: 11px; border-radius: 2px; overflow: hidden; }
+.key.fn { background: linear-gradient(#eef1f4, #cfd7de); }
+.key.fn svg { fill: var(--ui-text); }
+.key.fn.on svg { fill: var(--on-edge); }
+.key.fn.on { background: linear-gradient(var(--on-hi), var(--on-lo)); }
+.kbd.kana .key:not(.fn), .kbd.emoji .key:not(.fn) { font-size: 11px; }
+
+.actions {
+  position: absolute; left: 212px; top: 86px; width: 44px; height: 106px;
+  display: grid; grid-template-rows: 2fr 1fr 1fr; gap: 2px; padding-right: 2px;
+}
+.actions .btn { font-size: 11px; }
+.btn.send {
+  flex-direction: column; gap: 3px; font-size: 11px;
+  background: linear-gradient(var(--send-hi), var(--send-lo)); border-color: var(--send-edge);
+}
+.btn.send:active { background: linear-gradient(var(--on-hi), var(--on-lo)); border-color: var(--on-edge); }
+.btn.send svg { width: 14px; height: 11px; }
+
+#ghost {
+  position: fixed; z-index: 100; pointer-events: none;
+  transform: translate(-50%, -50%);
+  color: var(--ink); line-height: 1;
+  font-family: 'DotGothic16', monospace;
+  text-shadow: 0 0 2px #fff, 0 0 2px #fff;
+}
+
+/* Credit line under the DS. */
+.credit {
+  position: fixed; left: 0; right: 0; bottom: 8px;
+  text-align: center;
+  font-size: 12px; color: #6b7079;
+}
+.credit a { color: #8a9099; text-decoration: none; }
+.credit a:hover { color: #b3b9c1; text-decoration: underline; }
