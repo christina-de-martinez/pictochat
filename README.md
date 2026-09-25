@@ -1,6 +1,6 @@
 # PictoChat
 
-PictoChat from the Nintendo DS, on the web. No accounts: pick a name and one of the 16 DS colors (saved in a cookie), pick Chat Room A to D, draw or type, and hit SEND. Messages vanish after 24 hours.
+PictoChat from the Nintendo DS, on the web. No accounts: pick a name and one of the 16 DS colors (saved in a cookie), pick Chat Room A to D, draw or type, and hit SEND.
 
 Runs on Cloudflare Workers + a Durable Object (free plan).
 

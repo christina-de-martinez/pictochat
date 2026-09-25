@@ -776,7 +776,7 @@ function renderLobby() {
   if (!state.selectedRoom) {
     const hint = el('div', 'hint');
     hint.append(`Hi, `, makeTag(state.profile.name, state.profile.color), `!`);
-    hint.append(el('br'), 'Tap a room to see who is there.', el('br'), 'Messages vanish after 24 hours.');
+    hint.append(el('br'), 'Tap a room to join');
     hint.querySelector('.tag').style.cssText += 'position:static;display:inline-block;border-radius:3px';
     info.append(hint);
     return;

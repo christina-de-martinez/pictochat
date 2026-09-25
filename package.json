@@ -2,7 +2,7 @@
   "name": "pictochat",
   "version": "0.1.0",
   "private": true,
-  "description": "PictoChat for the web. No accounts, messages vanish after 24 hours.",
+  "description": "PictoChat with friends on the web.",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
